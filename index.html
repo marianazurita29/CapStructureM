@@ -44,7 +44,10 @@
         <p id="baseline-warning" role="alert" hidden></p>
         <div class="panel controls">
           <label for="cdss-debt">CDSS debt <output id="cdss-debt-amount" for="cdss-debt"></output></label>
-          <input id="cdss-debt" type="range" min="0" step="1">
+          <input id="cdss-debt" type="range" min="0" step="1" aria-describedby="cdss-mode-note">
+          <label class="slider-mode"><input id="cdss-continuous" type="checkbox"> Continuous mode</label>
+          <p id="cdss-mode-note"></p>
+          <p id="cdss-rates"></p>
           <button id="best-price" type="button">Best price</button>
           <button id="highest-eps" type="button">Highest EPS</button>
           <p id="selection-note" role="status" hidden></p>

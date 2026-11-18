@@ -1,6 +1,6 @@
 "use strict";
 
-const { exampleFirm, cdssAtDebt, managementStake, bestDebtIndex, roundHalfUp } = window.capstruct;
+const { exampleFirm, cdssAtDebt, estimateRates, managementStake, bestDebtIndex, roundHalfUp } = window.capstruct;
 
 async function loadCsv(file) {
   const response = await fetch(`data/${file}.csv`);
@@ -192,17 +192,46 @@ function renderSelectedCdss(cdss, { caseMethod, newPriceMethod }) {
   document.querySelector("#cdss-selected").replaceChildren(card);
 }
 
-function setupCdssControl(cdss, results) {
+function setupCdssControl(cdss, schedule, results, taxRate) {
   const input = document.querySelector("#cdss-debt");
   const output = document.querySelector("#cdss-debt-amount");
   const note = document.querySelector("#selection-note");
+  const mode = document.querySelector("#cdss-continuous");
+  const modeNote = document.querySelector("#cdss-mode-note");
+  const ratesText = document.querySelector("#cdss-rates");
+  let continuous = false;
   input.max = results.length - 1;
   input.value = 0;
-  function update() {
-    const result = results[input.valueAsNumber];
-    showDebt(input, output, result.caseMethod.debt);
-    renderSelectedCdss(cdss, result);
+
+  function selectedDebt() {
+    return continuous ? input.valueAsNumber : schedule[input.valueAsNumber].debt;
   }
+
+  function update() {
+    const debt = selectedDebt();
+    const exact = schedule.find(row => row.debt === debt);
+    const rates = exact || estimateRates(schedule, debt);
+    const source = exact ? "Banker's schedule" : "Estimated rates";
+    const debtRate = debt === 0 ? "n/a" : rate(rates.cost_of_debt);
+    ratesText.textContent = `${source} · Cost of debt ${debtRate} · Cost of equity ${rate(rates.cost_of_equity)}`;
+    modeNote.textContent = continuous
+      ? "Move by $1. Rates between bank quotes are estimated by linear interpolation. Below the first quote, the cost of debt uses that first rate. The buttons compare the banker's quoted amounts."
+      : "The slider and buttons use the banker's quoted amounts.";
+    showDebt(input, output, debt);
+    renderSelectedCdss(cdss, cdssAtDebt(cdss, rates, taxRate));
+  }
+
+  mode.addEventListener("change", () => {
+    const debt = selectedDebt();
+    continuous = mode.checked;
+    input.min = continuous ? schedule[0].debt : 0;
+    input.max = continuous ? schedule.at(-1).debt : results.length - 1;
+    const closest = schedule.reduce((best, row, index) =>
+      Math.abs(row.debt - debt) < Math.abs(schedule[best].debt - debt) ? index : best, 0);
+    input.value = continuous ? debt : closest;
+    note.hidden = true;
+    update();
+  });
   input.addEventListener("input", () => {
     note.hidden = true;
     update();
@@ -211,7 +240,7 @@ function setupCdssControl(cdss, results) {
     document.getElementById(id).addEventListener("click", () => {
       const caseIndex = bestDebtIndex(results, "caseMethod", metric);
       const newIndex = bestDebtIndex(results, "newPriceMethod", metric);
-      input.value = caseIndex;
+      input.value = continuous ? schedule[caseIndex].debt : caseIndex;
       note.hidden = caseIndex === newIndex;
       note.textContent = `The case method selects ${money(results[caseIndex].caseMethod.debt)} and the new-price method selects ${money(results[newIndex].newPriceMethod.debt)}. The slider shows the case amount.`;
       update();
@@ -235,7 +264,7 @@ async function start() {
   })).sort((first, second) => first.debt - second.debt);
   const results = schedule.map(row => cdssAtDebt(cdss, row, taxRate));
   setupFirmControl(outcomes, numbersByKey(example, "item"), taxRate);
-  setupCdssControl(cdss, results);
+  setupCdssControl(cdss, schedule, results, taxRate);
   const caseRows = results.map(row => row.caseMethod);
   const best = [
     ...renderSchedule(`Case method · Buy back at ${price(cdss.share_price)}`,
