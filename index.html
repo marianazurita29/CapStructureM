@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AGE Capital Structure</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="capstruct.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <p class="course">FIN 4150 · Managerial Finance II</p>
+      <h1>AGE Capital Structure</h1>
+      <p>Compare Firm U and Firm L, then see how borrowing changes the value of Campus Deli and Sub Shop.</p>
+      <nav aria-label="Page sections">
+        <a href="#firms">Firm U and Firm L</a>
+        <a href="#cdss">CDSS buybacks</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <p id="status" role="status">Loading case data…</p>
+    <div id="results" hidden>
+      <section id="firms" aria-labelledby="firm-title">
+        <h2 id="firm-title">Firm U and Firm L <span>Question c</span></h2>
+        <p>Return on equity (ROE) is net income divided by book equity. Times interest earned (TIE) is operating earnings divided by interest. Firm U has no interest expense, so its TIE is undefined.</p>
+        <div id="firm-tables" class="grid"></div>
+        <div id="firm-summary"></div>
+      </section>
+      <section id="cdss" aria-labelledby="cdss-title">
+        <h2 id="cdss-title">CDSS buybacks <span>Question d</span></h2>
+        <p>Earnings per share (EPS) use the shares remaining after the buyback. The weighted average cost of capital (WACC) combines the after-tax cost of debt with the cost of equity.</p>
+        <p id="baseline-warning" role="alert" hidden></p>
+        <div id="cdss-tables" class="grid"></div>
+        <p id="comparison"></p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

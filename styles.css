@@ -1,0 +1,59 @@
+:root {
+  color-scheme: light;
+  font: 100%/1.55 system-ui, sans-serif;
+  color: #172c34;
+  background: #f4f7f6;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+.wrap { width: min(100% - 2rem, 92rem); margin-inline: auto; }
+header { background: #12383e; color: #fff; padding: 2.8rem 0 2rem; }
+header p, section > p { max-width: 72ch; }
+.course { color: #c1ded9; font-weight: 650; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.1; margin: .4rem 0; }
+nav { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; }
+nav a { color: #e4fffa; text-underline-offset: .25em; }
+main { padding-bottom: 3rem; }
+section { margin-top: 2rem; scroll-margin-top: 1rem; }
+h2 { margin-bottom: 0; line-height: 1.25; }
+h2 span { color: #47636b; font-size: .85rem; font-weight: 600; white-space: nowrap; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.panel { min-width: 0; background: #fff; border: 1px solid #d1dfda; border-radius: .75rem; padding: .85rem; }
+.panel p { margin: .3rem 0 .75rem; font-size: .9rem; color: #405d64; }
+.panel h3 { margin: 0; font-size: 1rem; }
+#firm-summary { margin-top: 1rem; }
+table { border-collapse: collapse; width: 100%; font-size: .875rem; font-variant-numeric: tabular-nums; }
+caption { text-align: left; font-weight: 700; padding-bottom: .5rem; }
+th, td { padding: .5rem .35rem; border-bottom: 1px solid #dee8e5; text-align: right; }
+th:first-child { text-align: left; }
+thead { background: #e7f1ee; }
+tbody tr:last-child > * { border-bottom: 0; }
+[data-best] { background: #e1f3e8; font-weight: 700; }
+#baseline-warning { color: #8b3217; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+@media (max-width: 78rem) {
+  #cdss-tables { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 46rem) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 38rem) {
+  .schedule thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .schedule tbody tr { display: block; padding: .3rem 0; border-bottom: 1px solid #c5d8d2; }
+  .schedule tbody tr:last-child { border-bottom: 0; }
+  .schedule tbody th, .schedule tbody td { display: flex; justify-content: space-between; gap: .5rem; border: 0; }
+  .schedule tbody th { background: #e7f1ee; }
+  .schedule .cell-label { display: inline; text-align: left; color: #405d64; }
+}
+
+@media (min-width: 38.001rem) {
+  .cell-label { display: none; }
+}
