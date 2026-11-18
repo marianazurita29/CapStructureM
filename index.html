@@ -41,6 +41,12 @@
       <section id="cdss" aria-labelledby="cdss-title">
         <h2 id="cdss-title">CDSS buybacks <span>Question d</span></h2>
         <p>Earnings per share (EPS) use the shares remaining after the buyback. The weighted average cost of capital (WACC) combines the after-tax cost of debt with the cost of equity.</p>
+        <div class="panel controls">
+          <input id="banker-file" type="file" accept=".csv,text/csv" hidden>
+          <button id="load-banker" type="button">Load banker's schedule</button>
+          <button id="reset-banker" type="button" hidden>Use case schedule</button>
+          <p id="banker-status" role="status">Using the AGE case schedule. Selected files stay on this device.</p>
+        </div>
         <p id="baseline-warning" role="alert" hidden></p>
         <div class="panel controls">
           <label for="cdss-debt">CDSS debt <output id="cdss-debt-amount" for="cdss-debt"></output></label>
