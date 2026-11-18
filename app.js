@@ -1,6 +1,6 @@
 "use strict";
 
-const { exampleFirm, cdssAtDebt, roundHalfUp } = window.capstruct;
+const { exampleFirm, cdssAtDebt, managementStake, bestDebtIndex, roundHalfUp } = window.capstruct;
 
 async function loadCsv(file) {
   const response = await fetch(`data/${file}.csv`);
@@ -85,6 +85,8 @@ function renderTable(parent, title, headers, rows, schedule = false) {
 }
 
 function renderFirms(firms, taxRate) {
+  const tables = document.querySelector("#firm-tables");
+  tables.replaceChildren();
   const measures = [
     ["Assets", "assets", money], ["Equity", "equity", money],
     ["Probability", "probability", number], ["Sales", "sales", money],
@@ -100,7 +102,7 @@ function renderFirms(firms, taxRate) {
       values: [label, ...firm.rows.map(row => format(row[key]))]
     }));
     renderTable(card, `${name} income statements and ratios`, headers, rows);
-    document.querySelector("#firm-tables").append(card);
+    tables.append(card);
   }
   const summary = panel("Expected return and risk",
     "Expected values are probability-weighted averages. The coefficient of variation is the standard deviation divided by the expected return.");
@@ -114,7 +116,7 @@ function renderFirms(firms, taxRate) {
   ];
   renderTable(summary, "Expected return and risk by firm", ["Measure", ...firms.map(([name]) => name)],
     rows.map(values => ({ values })));
-  document.querySelector("#firm-summary").append(summary);
+  document.querySelector("#firm-summary").replaceChildren(summary);
 }
 
 function renderSchedule(title, note, rows) {
@@ -137,12 +139,92 @@ function renderSchedule(title, note, rows) {
   return [bestPriceDebt, bestWaccDebt];
 }
 
+function showDebt(input, output, debt) {
+  const label = money(debt);
+  input.setAttribute("aria-valuetext", label);
+  output.value = label;
+}
+
+function setupFirmControl(outcomes, example, taxRate) {
+  const { total_assets: assets, firm_l_debt: caseDebt, interest_rate: debtRate,
+    slider_max: max, slider_step: step } = example;
+  const input = document.querySelector("#firm-debt");
+  const output = document.querySelector("#firm-debt-amount");
+  input.max = max;
+  input.step = step;
+  input.value = caseDebt;
+  document.querySelector("#firm-rate-note").textContent =
+    `The interest rate stays at ${rate(debtRate)} to show how debt changes returns and risk at a fixed rate.`;
+  const firmU = exampleFirm(outcomes, assets, 0, 0, taxRate);
+  function update() {
+    const debt = input.valueAsNumber;
+    showDebt(input, output, debt);
+    renderFirms([["Firm U", firmU], ["Firm L", exampleFirm(outcomes, assets, debt, debtRate, taxRate)]], taxRate);
+  }
+  input.addEventListener("input", update);
+  document.querySelector("#firm-reset").addEventListener("click", () => {
+    input.value = caseDebt;
+    update();
+  });
+  update();
+}
+
+function renderSelectedCdss(cdss, { caseMethod, newPriceMethod }) {
+  function stakeLabel(row) {
+    const { stake, outsideLeft } = managementStake(cdss, row);
+    if (stake === null) return "Management would have to sell shares.";
+    return outsideLeft ? rate(stake) : `${rate(stake)} (no outside shareholders remain)`;
+  }
+  const card = panel("Selected debt results");
+  const metrics = [
+    ["Share price", row => price(row.price)],
+    ["Shares repurchased", row => number(row.repurchased)],
+    ["Shares remaining", row => number(row.remaining)],
+    ["EPS", row => price(row.eps)],
+    ["Dividends per share", row => price(row.eps)],
+    ["TIE", row => multiple(row.tie)],
+    ["WACC", row => rate(row.wacc)],
+    ["Management's share", stakeLabel]
+  ];
+  renderTable(card, "CDSS buyback results at the selected debt",
+    ["Measure", `Buy back at ${price(cdss.share_price)} (book WACC)`, "Buy back at new price (market WACC)"],
+    metrics.map(([label, format]) => ({ values: [label, format(caseMethod), format(newPriceMethod)] })));
+  document.querySelector("#cdss-selected").replaceChildren(card);
+}
+
+function setupCdssControl(cdss, results) {
+  const input = document.querySelector("#cdss-debt");
+  const output = document.querySelector("#cdss-debt-amount");
+  const note = document.querySelector("#selection-note");
+  input.max = results.length - 1;
+  input.value = 0;
+  function update() {
+    const result = results[input.valueAsNumber];
+    showDebt(input, output, result.caseMethod.debt);
+    renderSelectedCdss(cdss, result);
+  }
+  input.addEventListener("input", () => {
+    note.hidden = true;
+    update();
+  });
+  for (const [id, metric] of [["best-price", "price"], ["highest-eps", "eps"]]) {
+    document.getElementById(id).addEventListener("click", () => {
+      const caseIndex = bestDebtIndex(results, "caseMethod", metric);
+      const newIndex = bestDebtIndex(results, "newPriceMethod", metric);
+      input.value = caseIndex;
+      note.hidden = caseIndex === newIndex;
+      note.textContent = `The case method selects ${money(results[caseIndex].caseMethod.debt)} and the new-price method selects ${money(results[newIndex].newPriceMethod.debt)}. The slider shows the case amount.`;
+      update();
+    });
+  }
+  update();
+}
+
 async function start() {
   const [assumptions, example, scenarios, company, bank] = await Promise.all(
     ["assumptions", "example_firms", "ebit_scenarios", "cdss", "banker_schedule"].map(loadCsv)
   );
   const { tax_rate: taxRate } = numbersByKey(assumptions, "assumption");
-  const { total_assets: assets, firm_l_debt: debt, interest_rate: debtRate } = numbersByKey(example, "item");
   const outcomes = scenarios.map(row => Object.fromEntries(
     Object.entries(row).map(([key, value]) => [key, Number(value)])
   ));
@@ -152,10 +234,8 @@ async function start() {
     cost_of_equity: Number(row.cost_of_equity)
   })).sort((first, second) => first.debt - second.debt);
   const results = schedule.map(row => cdssAtDebt(cdss, row, taxRate));
-  renderFirms([
-    ["Firm U", exampleFirm(outcomes, assets, 0, 0, taxRate)],
-    ["Firm L", exampleFirm(outcomes, assets, debt, debtRate, taxRate)]
-  ], taxRate);
+  setupFirmControl(outcomes, numbersByKey(example, "item"), taxRate);
+  setupCdssControl(cdss, results);
   const caseRows = results.map(row => row.caseMethod);
   const best = [
     ...renderSchedule(`Case method · Buy back at ${price(cdss.share_price)}`,

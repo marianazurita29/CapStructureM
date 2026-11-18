@@ -57,3 +57,28 @@ tbody tr:last-child > * { border-bottom: 0; }
 @media (min-width: 38.001rem) {
   .cell-label { display: none; }
 }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .65rem;
+  margin-bottom: 1rem;
+}
+
+.controls label { font-weight: 650; }
+.controls output { font-variant-numeric: tabular-nums; margin-inline-start: .4rem; }
+.controls input { flex: 1 1 12rem; min-width: 0; accent-color: #24685f; }
+.controls button {
+  font: inherit;
+  font-weight: 650;
+  color: #fff;
+  background: #24685f;
+  border: 0;
+  border-radius: .4rem;
+  padding: .4rem .75rem;
+  cursor: pointer;
+}
+.controls button:hover { background: #12383e; }
+.controls p { flex-basis: 100%; margin: 0; }
+#cdss-selected { margin-bottom: 1rem; }

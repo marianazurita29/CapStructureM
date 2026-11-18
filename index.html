@@ -26,6 +26,12 @@
       <section id="firms" aria-labelledby="firm-title">
         <h2 id="firm-title">Firm U and Firm L <span>Question c</span></h2>
         <p>Return on equity (ROE) is net income divided by book equity. Times interest earned (TIE) is operating earnings divided by interest. Firm U has no interest expense, so its TIE is undefined.</p>
+        <div class="panel controls">
+          <label for="firm-debt">Firm L debt <output id="firm-debt-amount" for="firm-debt"></output></label>
+          <input id="firm-debt" type="range" min="0" aria-describedby="firm-rate-note">
+          <button id="firm-reset" type="button">Case</button>
+          <p id="firm-rate-note"></p>
+        </div>
         <div id="firm-tables" class="grid"></div>
         <div id="firm-summary"></div>
       </section>
@@ -33,6 +39,14 @@
         <h2 id="cdss-title">CDSS buybacks <span>Question d</span></h2>
         <p>Earnings per share (EPS) use the shares remaining after the buyback. The weighted average cost of capital (WACC) combines the after-tax cost of debt with the cost of equity.</p>
         <p id="baseline-warning" role="alert" hidden></p>
+        <div class="panel controls">
+          <label for="cdss-debt">CDSS debt <output id="cdss-debt-amount" for="cdss-debt"></output></label>
+          <input id="cdss-debt" type="range" min="0" step="1">
+          <button id="best-price" type="button">Best price</button>
+          <button id="highest-eps" type="button">Highest EPS</button>
+          <p id="selection-note" role="status" hidden></p>
+        </div>
+        <div id="cdss-selected"></div>
         <div id="cdss-tables" class="grid"></div>
         <p id="comparison"></p>
       </section>

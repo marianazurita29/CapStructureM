@@ -57,12 +57,29 @@
     return { caseMethod, newPriceMethod };
   }
 
+  function managementStake(cdss, row) {
+    const held = cdss.management_share * cdss.shares_outstanding;
+    const outside = cdss.shares_outstanding - held;
+    if (row.repurchased > outside) return { stake: null, outsideLeft: false };
+    return { stake: held / row.remaining, outsideLeft: row.repurchased < outside };
+  }
+
+  function bestDebtIndex(results, method, metric) {
+    return results.reduce((best, result, index) => {
+      const candidate = result[method];
+      const current = results[best][method];
+      const wins = candidate[metric] > current[metric];
+      const lowerDebtOnTie = candidate[metric] === current[metric] && candidate.debt < current.debt;
+      return wins || lowerDebtOnTie ? index : best;
+    }, 0);
+  }
+
   function roundHalfUp(value, digits) {
     const scale = 10 ** digits;
     return Math.round(Number((value * scale).toPrecision(12))) / scale;
   }
 
-  const formulas = { exampleFirm, cdssAtDebt, roundHalfUp };
+  const formulas = { exampleFirm, cdssAtDebt, managementStake, bestDebtIndex, roundHalfUp };
   if (typeof module === "object" && module.exports) module.exports = formulas;
   else window.capstruct = formulas;
 })();
