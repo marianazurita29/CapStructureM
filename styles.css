@@ -68,7 +68,7 @@ tbody tr:last-child > * { border-bottom: 0; }
 
 .controls label { font-weight: 650; }
 .controls output { font-variant-numeric: tabular-nums; margin-inline-start: .4rem; }
-.controls input { flex: 1 1 12rem; min-width: 0; accent-color: #24685f; }
+.controls input[type="range"] { flex: 1 1 12rem; min-width: 0; accent-color: #24685f; }
 .controls button {
   font: inherit;
   font-weight: 650;
@@ -82,3 +82,5 @@ tbody tr:last-child > * { border-bottom: 0; }
 .controls button:hover { background: #12383e; }
 .controls p { flex-basis: 100%; margin: 0; }
 #cdss-selected { margin-bottom: 1rem; }
+
+.slider-mode { display: inline-flex; align-items: center; gap: .25rem; }

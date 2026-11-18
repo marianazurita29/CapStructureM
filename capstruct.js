@@ -57,6 +57,22 @@
     return { caseMethod, newPriceMethod };
   }
 
+  function estimateRates(schedule, debt) {
+    const upperIndex = schedule.findIndex(row => row.debt >= debt);
+    const upper = schedule[upperIndex];
+    if (upper.debt === debt) return upper;
+    const lower = schedule[upperIndex - 1];
+    const share = (debt - lower.debt) / (upper.debt - lower.debt);
+    const interpolate = (start, end) => start + share * (end - start);
+    // The bank gives no rate for a zero balance. Use the first quoted rate for small loans.
+    const lowerDebtRate = lower.debt === 0 ? upper.cost_of_debt : lower.cost_of_debt;
+    return {
+      debt,
+      cost_of_debt: interpolate(lowerDebtRate, upper.cost_of_debt),
+      cost_of_equity: interpolate(lower.cost_of_equity, upper.cost_of_equity)
+    };
+  }
+
   function managementStake(cdss, row) {
     const held = cdss.management_share * cdss.shares_outstanding;
     const outside = cdss.shares_outstanding - held;
@@ -79,7 +95,7 @@
     return Math.round(Number((value * scale).toPrecision(12))) / scale;
   }
 
-  const formulas = { exampleFirm, cdssAtDebt, managementStake, bestDebtIndex, roundHalfUp };
+  const formulas = { exampleFirm, cdssAtDebt, estimateRates, managementStake, bestDebtIndex, roundHalfUp };
   if (typeof module === "object" && module.exports) module.exports = formulas;
   else window.capstruct = formulas;
 })();
