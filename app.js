@@ -261,3 +261,9 @@ start().catch(error => {
   document.querySelector("#status").textContent =
     `${error.message} Open the app through a web server so it can read the case files.`;
 });
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(error => {
+    console.warn("Offline setup failed.", error);
+  });
+}
