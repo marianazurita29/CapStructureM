@@ -5,11 +5,16 @@ const { exampleFirm, cdssAtDebt, estimateRates, managementStake, bestDebtIndex, 
 async function loadCsv(file) {
   const response = await fetch(`data/${file}.csv`);
   if (!response.ok) throw new Error(`Could not load ${file}.csv (HTTP ${response.status}).`);
-  const [header, ...rows] = (await response.text()).trim().split(/\r?\n/);
+  return parseCsv(await response.text());
+}
+
+function parseCsv(content) {
+  const [header, ...rows] = content.trim().split(/\r?\n/);
   const columns = header.split(",");
   // The case files use plain, comma-separated fields with no quoted commas.
   return rows.filter(row => row.trim()).map(row => {
     const fields = row.split(",");
+    if (fields.length !== columns.length) throw new Error("A CSV row has the wrong number of fields.");
     return Object.fromEntries(columns.map((key, index) => [key, fields[index].trim()]));
   });
 }
@@ -192,7 +197,7 @@ function renderSelectedCdss(cdss, { caseMethod, newPriceMethod }) {
   document.querySelector("#cdss-selected").replaceChildren(card);
 }
 
-function setupCdssControl(cdss, schedule, results, taxRate) {
+function setupCdssControl(cdss, taxRate) {
   const input = document.querySelector("#cdss-debt");
   const output = document.querySelector("#cdss-debt-amount");
   const note = document.querySelector("#selection-note");
@@ -200,8 +205,7 @@ function setupCdssControl(cdss, schedule, results, taxRate) {
   const modeNote = document.querySelector("#cdss-mode-note");
   const ratesText = document.querySelector("#cdss-rates");
   let continuous = false;
-  input.max = results.length - 1;
-  input.value = 0;
+  let schedule, results;
 
   function selectedDebt() {
     return continuous ? input.valueAsNumber : schedule[input.valueAsNumber].debt;
@@ -246,25 +250,79 @@ function setupCdssControl(cdss, schedule, results, taxRate) {
       update();
     });
   }
-  update();
+  return (nextSchedule, nextResults) => {
+    schedule = nextSchedule;
+    results = nextResults;
+    input.min = 0;
+    input.max = continuous ? schedule.at(-1).debt : schedule.length - 1;
+    input.value = 0;
+    note.hidden = true;
+    update();
+  };
 }
 
-async function start() {
-  const [assumptions, example, scenarios, company, bank] = await Promise.all(
-    ["assumptions", "example_firms", "ebit_scenarios", "cdss", "banker_schedule"].map(loadCsv)
-  );
-  const { tax_rate: taxRate } = numbersByKey(assumptions, "assumption");
-  const outcomes = scenarios.map(row => Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [key, Number(value)])
-  ));
-  const cdss = numbersByKey(company, "item");
-  const schedule = bank.map(row => ({
-    debt: Number(row.debt), cost_of_debt: row.cost_of_debt === "" ? 0 : Number(row.cost_of_debt),
-    cost_of_equity: Number(row.cost_of_equity)
-  })).sort((first, second) => first.debt - second.debt);
-  const results = schedule.map(row => cdssAtDebt(cdss, row, taxRate));
-  setupFirmControl(outcomes, numbersByKey(example, "item"), taxRate);
-  setupCdssControl(cdss, schedule, results, taxRate);
+function parseSchedule(rows) {
+  if (rows.length < 2) throw new Error("Include a zero-debt row and at least one positive debt amount.");
+  const schedule = rows.map(row => {
+    const { debt, cost_of_debt: debtRate, cost_of_equity: equityRate } = row;
+    if (!debt || debtRate === undefined || !equityRate || Object.keys(row).length !== 3) {
+      throw new Error("Use the columns debt, cost_of_debt, and cost_of_equity.");
+    }
+    const amount = Number(debt);
+    const rd = Number(debtRate);
+    const rs = Number(equityRate);
+    if (!Number.isSafeInteger(amount) || amount < 0 || !Number.isFinite(rd) ||
+        rd < 0 || rd > 1 || !Number.isFinite(rs) || rs <= 0 || rs > 1 ||
+        (amount === 0 ? rd !== 0 : debtRate === "")) {
+      throw new Error("Use nonnegative whole-dollar debt amounts and decimal rates (for example, 0.11).");
+    }
+    return { debt: amount, cost_of_debt: rd, cost_of_equity: rs };
+  }).sort((a, b) => a.debt - b.debt);
+  if (schedule[0].debt !== 0 || schedule.some((row, i) => i > 0 && row.debt === schedule[i - 1].debt)) {
+    throw new Error("Include one zero-debt row and use each debt amount only once.");
+  }
+  return schedule;
+}
+
+function setupSchedulePicker(caseSchedule, showSchedule) {
+  const input = document.querySelector("#banker-file");
+  const status = document.querySelector("#banker-status");
+  const reset = document.querySelector("#reset-banker");
+  let activeReader;
+  document.querySelector("#load-banker").addEventListener("click", () => input.click());
+  input.addEventListener("change", () => {
+    const [file] = input.files;
+    input.value = "";
+    if (!file) return;
+    activeReader?.abort();
+    const reader = new FileReader();
+    activeReader = reader;
+    reader.addEventListener("load", () => {
+      if (reader !== activeReader) return;
+      try {
+        showSchedule(parseSchedule(parseCsv(reader.result)));
+        reset.hidden = false;
+        status.textContent = `Using ${file.name}. This file was read on your device.`;
+      } catch (error) {
+        status.textContent = `${error.message} The current schedule is still active.`;
+      }
+    });
+    reader.addEventListener("error", () => {
+      if (reader === activeReader) status.textContent = "Could not read the file. The current schedule is still active.";
+    });
+    reader.readAsText(file);
+  });
+  reset.addEventListener("click", () => {
+    activeReader?.abort();
+    activeReader = undefined;
+    showSchedule(caseSchedule);
+    reset.hidden = true;
+    status.textContent = "Using the AGE case schedule. Selected files stay on this device.";
+  });
+}
+
+function renderCdssSchedules(cdss, results) {
+  document.querySelector("#cdss-tables").replaceChildren();
   const caseRows = results.map(row => row.caseMethod);
   const best = [
     ...renderSchedule(`Case method · Buy back at ${price(cdss.share_price)}`,
@@ -277,11 +335,40 @@ async function start() {
     ? "Both methods identify the same borrowing amount for the highest share price and lowest WACC."
     : "The highest share price and lowest WACC do not all occur at the same debt level.";
   const baseline = caseRows.find(row => row.debt === 0);
+  const warning = document.querySelector("#baseline-warning");
+  warning.hidden = true;
   if (baseline && Math.abs(baseline.price - cdss.share_price) > 1e-8) {
-    const warning = document.querySelector("#baseline-warning");
     warning.textContent = `The model gives ${price(baseline.price)} at zero debt, but the case data lists ${price(cdss.share_price)}.`;
     warning.hidden = false;
   }
+}
+
+async function start() {
+  const [assumptions, example, scenarios, company, bank] = await Promise.all(
+    ["assumptions", "example_firms", "ebit_scenarios", "cdss", "banker_schedule"].map(loadCsv)
+  );
+  const { tax_rate: taxRate } = numbersByKey(assumptions, "assumption");
+  const outcomes = scenarios.map(row => Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [key, Number(value)])
+  ));
+  const cdss = numbersByKey(company, "item");
+  const caseSchedule = parseSchedule(bank);
+  setupFirmControl(outcomes, numbersByKey(example, "item"), taxRate);
+  const showControl = setupCdssControl(cdss, taxRate);
+
+  function showSchedule(schedule) {
+    const results = schedule.map(row => cdssAtDebt(cdss, row, taxRate));
+    if (results.some(({ caseMethod, newPriceMethod }) =>
+      caseMethod.remaining <= 0 || newPriceMethod.remaining <= 0 || newPriceMethod.price <= 0 ||
+      !Number.isFinite(newPriceMethod.eps) || !Number.isFinite(newPriceMethod.wacc))) {
+      throw new Error("The schedule must leave shares outstanding and positive equity at every debt amount.");
+    }
+    renderCdssSchedules(cdss, results);
+    showControl(schedule, results);
+  }
+
+  showSchedule(caseSchedule);
+  setupSchedulePicker(caseSchedule, showSchedule);
   document.querySelector("#results").hidden = false;
   document.querySelector("#status").hidden = true;
 }

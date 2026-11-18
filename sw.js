@@ -1,7 +1,7 @@
 "use strict";
 
 const cachePrefix = `age-capital-${self.registration.scope}-`;
-const cacheName = `${cachePrefix}v2`;
+const cacheName = `${cachePrefix}v3`;
 const assets = [
   "./", "./index.html", "./styles.css", "./capstruct.js", "./app.js",
   "./manifest.webmanifest",
